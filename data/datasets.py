@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Sequence
 
 from torch import Tensor
 from torch.utils.data import Dataset
@@ -8,7 +8,7 @@ class NamedTensorDataset(Dataset[Dict[str, Tensor]]):
 
     tensors: Dict[str, Tensor]
 
-    def __init__(self, **tensors: Tensor) -> None:
+    def __init__(self, **tensors: Tensor):
         self.tensors = tensors
 
     def __getattr__(self, key):
@@ -28,3 +28,20 @@ class NamedTensorDataset(Dataset[Dict[str, Tensor]]):
 
     def cpu(self):
         for k, v in self.tensors.items(): self.tensors[k] = v.cpu()
+
+
+class Subset(Dataset):
+
+    dataset: Dataset
+    indices: Tensor
+
+    def __init__(self, dataset: Dataset, indices: slice, **kwargs):
+        self.dataset = dataset
+        self.indices = indices
+        self.__dict__.update(kwargs)  # auxiliary attributes
+
+    def __getitem__(self, index):
+        return self.dataset[self.indices[index]]
+    
+    def __len__(self):
+        return self.indices.stop - self.indices.start + 1
