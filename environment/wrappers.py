@@ -1,8 +1,10 @@
 import numpy as np
 import torch as th
 import gymnasium as gym
+from gymnasium.spaces import flatdim
 
 from utils import transpose_dict, safe_from_numpy
+from environment.utils import logit_dim
 
 
 class TorchIO(gym.Wrapper):
@@ -10,6 +12,15 @@ class TorchIO(gym.Wrapper):
     
     def __init__(self, env):
         super().__init__(env)
+
+        # base attributes
+        self.num_envs = self.unwrapped.num_envs
+        self.single_action_space = self.unwrapped.single_action_space
+        self.single_observation_space = self.unwrapped.single_observation_space
+
+        # derived attributes
+        self.flat_dim = flatdim(self.single_observation_space)
+        self.logit_dim = logit_dim(self.single_action_space)
 
     def reset(self, seed=None, options=None):
         """Convert initial obs to tensor on reset"""

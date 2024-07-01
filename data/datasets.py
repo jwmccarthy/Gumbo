@@ -21,7 +21,7 @@ class NamedTensorDataset(Dataset[Dict[str, Tensor]]):
         for i, k in enumerate(self.tensors): self.tensors[k][index] = values[i]
     
     def __len__(self):
-        return next(iter(self.tensors)).size(0)
+        return next(iter(self.tensors.values())).size(0)
     
     def to(self, device):
         for v in self.tensors.values(): v.to(device)

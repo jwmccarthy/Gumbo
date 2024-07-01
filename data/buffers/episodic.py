@@ -10,8 +10,8 @@ class EpisodicBuffer:
         self.env = env
         self.size = size
         self.num_env = self.env.num_envs
-        self.obs_dim = env.observation_space.shape
-        self.act_dim = env.action_space.shape
+        self.obs_dim = env.single_observation_space.shape
+        self.act_dim = env.single_action_space.shape
 
         self.episodes = []
         self.data = NamedTensorDataset(
