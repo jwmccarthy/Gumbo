@@ -35,7 +35,7 @@ class TorchIO(gym.Wrapper):
         obs, rewards, terms, truncs, infos = super().step(actions)
 
         # handle data in infos
-        infos = transpose_dict(infos)
+        infos = transpose_dict(infos) or [{} for _ in range(self.num_envs)]
         infos = [{k: safe_from_numpy(v) for k, v in d.items()} for d in infos]
 
         return (

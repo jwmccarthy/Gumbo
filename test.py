@@ -1,28 +1,22 @@
-import numpy as np
 import torch as th
 import gymnasium as gym
 from environment.wrappers import TorchIO
+from data.collector import Collector
 from data.buffers.episodic import EpisodicBuffer
+from policy.discrete import CategoricalPolicy
 
 
 if __name__ == "__main__":
-    env = gym.vector.SyncVectorEnv(3 * [lambda: gym.make("BipedalWalker-v3")])
+    env = gym.vector.SyncVectorEnv(3 * [lambda: gym.make("LunarLander-v2")])
     env = TorchIO(env)
+
+    agent = CategoricalPolicy(th.nn.Linear(env.flat_dim, env.logit_dim))
 
     buff = EpisodicBuffer(env, 2048)
 
-    obs, infos = env.reset()
+    collector = Collector(env, agent, buff)
 
-    for _ in range(1024):
-        actions = env.action_space.sample()
-        next_obs, rewards, terms, truncs, infos = env.step(actions)
-        buff.add(obs, th.from_numpy(actions), rewards, terms, truncs, infos)
+    data = collector.collect(2048)
 
     for e in buff.episodes:
         print(e.env_idx, e.indices, e.trunc, len(e))
-
-    print(buff.get_data().obs[3])
-
-    print(env)
-
-    print(env.logit_dim, env.flat_dim)
