@@ -4,6 +4,7 @@ from environment.wrappers import TorchIO
 from data.collector import Collector
 from data.buffers.episodic import EpisodicBuffer
 from policy.discrete import CategoricalPolicy
+from policy.continuous import DiagonalGaussianPolicy
 
 
 if __name__ == "__main__":
@@ -20,3 +21,17 @@ if __name__ == "__main__":
 
     for e in buff.episodes:
         print(e.env_idx, e.indices, e.trunc, len(e))
+
+
+
+
+
+
+
+
+
+
+
+
+
+    

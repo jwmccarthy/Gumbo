@@ -38,7 +38,7 @@ class Subset(Dataset):
     def __init__(self, dataset: Dataset, indices: slice, **kwargs):
         self.dataset = dataset
         self.indices = indices
-        self.__dict__.update(kwargs)  # auxiliary attributes
+        self.__dict__.update(kwargs)  # auxiliary attributes i.e. final obs
 
     def __getitem__(self, index):
         return self.dataset[self.indices[index]]

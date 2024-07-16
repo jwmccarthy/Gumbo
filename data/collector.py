@@ -6,11 +6,11 @@ class Collector:
         self.agent = agent
         self.buffer = buffer
 
-    def collect(self, steps):
+    def collect(self, steps, sample=True):
         last_obs, infos = self.env.reset()
 
         for t in range(steps):
-            actions = self.agent(last_obs)
+            actions = self.agent(last_obs, sample=sample)
             next_obs, rew, term, trunc, infos = self.env.step(actions)
 
             # truncated if last step and not terminal
