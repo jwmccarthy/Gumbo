@@ -27,7 +27,7 @@ class NamedTensorDataset(Dataset[Dict[str, Tensor]]):
         return next(iter(self.tensors.values())).size(0)
 
     def __add__(self, dataset):
-        return NamedTensorDataset(**self.tensors.update(dataset.tensors))
+        return NamedTensorDataset(**{**self.tensors, **dataset.tensors})
     
     def add(self, **tensors):
         self.tensors.update(tensors)

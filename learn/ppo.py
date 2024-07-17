@@ -53,7 +53,7 @@ class PPO:
             log_probs = dist.log_prob(ep_data.act)
 
             # calculate values
-            values = self.critic(ep_data.obs)
+            values = self.critic(ep_data.obs).squeeze()
             final_value = self.critic(episode.final_observation)
 
             # calculate advantages
@@ -61,23 +61,20 @@ class PPO:
                 ep_data.rew, values, episode.trunc, final_value
             )
 
-            print(new_data[indices, env_idx].lgp.shape)
-
             # store calculated data
             new_data[indices, env_idx] = (
                 log_probs, values, advantages
             )
 
         # calculate returns
-        data.ret = data.adv + data.val
+        new_data.ret = new_data.adv + new_data.val
 
         return data + new_data
 
     def _calculate_episode_advantages(self, rew, val, trunc, final_value):
-        next_val = trunc and final_value
         advantages = th.zeros_like(rew)
+        next_val, next_adv = trunc and final_value, 0
 
-        next_adv = 0.0
         for i in reversed(range(len(rew))):
             adv = rew[i] + self.gamma * next_val \
                          - val[i] \

@@ -19,18 +19,5 @@ if __name__ == "__main__":
     collector = Collector(env, policy, buff)
 
     ppo = PPO(policy, th.nn.Linear(env.flat_dim, 1), collector)
-    ppo.learn(10)
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
+    data = ppo.learn(10)
+    print(data.ret, "\n", data.val,"\n", data.adv)
