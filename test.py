@@ -20,4 +20,3 @@ if __name__ == "__main__":
 
     ppo = PPO(policy, th.nn.Linear(env.flat_dim, 1), collector)
     data = ppo.learn(10)
-    print(data.ret, "\n", data.val,"\n", data.adv)
