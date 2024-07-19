@@ -14,24 +14,43 @@ class PPO:
         policy, 
         critic, 
         collector, 
-        optimizer=Adam, 
+        sampler=BatchSampler,
+        optimizer=Adam,
+        eps=0.2,
+        gamma=0.99,
+        lmbda=0.95,
+        epochs=10,
+        buff_size=2048, 
+        batch_size=64,
         opt_kwargs={}
     ):
         self.policy = policy
         self.critic = critic
         self.collector = collector
 
+        # training hyperparams
+        self.eps = eps
+        self.gamma = gamma
+        self.lmbda = lmbda
+
+        # data hyperparams
+        self.epochs = epochs
+        self.buff_size = buff_size
+        self.batch_size = batch_size
+
         # initialize optimizer for combined params
         self.optimizer = optimizer(chain(policy.parameters(), 
                                          critic.parameters()),
                                    **opt_kwargs)
 
-        self.gamma = 0.99
-        self.lmbda = 0.95
-
     def learn(self, steps):
-        buffer = self.collector.collect(2048)
-        return self._augment_training_data(buffer)
+        for _ in range(0, steps, self.buff_size):
+            buffer = self.collector.collect(self.buff_size)
+            data = self._augment_training_data(buffer)
+
+            for _ in range(self.epochs):
+                for batch in NamedTensorDataset(data).batch(self.batch_size):
+                    self._update_policy(batch)
 
     def _augment_training_data(self, buffer):
         data = buffer.get_data()
@@ -59,7 +78,7 @@ class PPO:
             advantages = self._calculate_episode_advantages(
                 ep_data.rew, ep_data.val, final_value
             )
-            
+
             # store calculated data
             data.adv[indices, env_idx] = advantages
 
