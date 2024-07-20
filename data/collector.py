@@ -1,3 +1,5 @@
+import torch as th
+
 
 class Collector:
 
@@ -6,6 +8,7 @@ class Collector:
         self.agent = agent
         self.buffer = buffer
 
+    @th.no_grad()
     def collect(self, steps, sample=True):
         last_obs, infos = self.env.reset()
 

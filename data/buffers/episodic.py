@@ -1,7 +1,7 @@
 import numpy as np
 import torch as th
 
-from data.datasets import NamedTensorDataset, Subset
+from data.datasets import TensorDataset, Subset
 
 
 class EpisodicBuffer:
@@ -14,18 +14,18 @@ class EpisodicBuffer:
         self.act_dim = env.single_action_space.shape
 
         self.episodes = []
-        self.data = NamedTensorDataset(
+        self.data = TensorDataset(
             obs=th.empty((self.size, self.env.num_envs, *self.obs_dim)),
             act=th.empty((self.size, self.env.num_envs, *self.act_dim)),
             rew=th.empty((self.size, self.env.num_envs))
         )
 
         self.start = self.num_env * [0]
-        self.end = 0
+        self.end = -1
 
     def add(self, obs, act, rew, term, trunc, info=None):
         self.data[self.end] = (obs, act, rew)
-        self.end = self.end % self.size + 1
+        self.end = (self.end + 1) % self.size
         for i in range(self.num_env):
             if term[i] or trunc[i]: self._create_episode(i, trunc, info)
 
@@ -37,4 +37,5 @@ class EpisodicBuffer:
         self.episodes.append(episode)
 
     def get_data(self):
-        return self.data[:self.end]
+        print(self.end)
+        return self.data[:self.end+1]

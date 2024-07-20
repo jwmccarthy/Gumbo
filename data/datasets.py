@@ -4,7 +4,7 @@ from torch import Tensor
 from torch.utils.data import Dataset
 
 
-class NamedTensorDataset(Dataset[Dict[str, Tensor]]):
+class TensorDataset(Dataset[Dict[str, Tensor]]):
 
     tensors: Dict[str, Tensor]
 
@@ -18,7 +18,7 @@ class NamedTensorDataset(Dataset[Dict[str, Tensor]]):
         self.tensors[key] = value
 
     def __getitem__(self, index):
-        return NamedTensorDataset(**{k: v[index] for k, v in self.tensors.items()})
+        return TensorDataset(**{k: v[index] for k, v in self.tensors.items()})
     
     def __setitem__(self, index, values):
         for i, k in enumerate(self.tensors): self.tensors[k][index] = values[i]
@@ -27,19 +27,28 @@ class NamedTensorDataset(Dataset[Dict[str, Tensor]]):
         return next(iter(self.tensors.values())).size(0)
 
     def __add__(self, dataset):
-        return NamedTensorDataset(**{**self.tensors, **dataset.tensors})
+        return TensorDataset(**{**self.tensors, **dataset.tensors})
     
     def add(self, **tensors):
         self.tensors.update(tensors)
 
     def get(self, *keys):
-        return NamedTensorDataset(**{k: self.tensors[k] for k in keys})
+        return TensorDataset(**{k: self.tensors[k] for k in keys})
     
     def to(self, device):
         for v in self.tensors.values(): v.to(device)
 
     def cpu(self):
         for k, v in self.tensors.items(): self.tensors[k] = v.cpu()
+
+    def flatten(self):
+        return TensorDataset(**{
+            k: v.flatten(start_dim=0, end_dim=1) for k, v in self.tensors.items()
+        })
+    
+    @property
+    def shape(self):
+        return next(iter(self.tensors.values())).shape
 
 
 class Subset(Dataset):
