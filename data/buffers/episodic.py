@@ -37,5 +37,4 @@ class EpisodicBuffer:
         self.episodes.append(episode)
 
     def get_data(self):
-        print(self.end)
         return self.data[:self.end+1]
