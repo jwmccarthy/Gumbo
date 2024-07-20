@@ -8,3 +8,4 @@
 - NN initialization modifiers
 - Convolution utility
     - More efficient discount factor vector creation + reuse
+- Move buffers to file, not folder
