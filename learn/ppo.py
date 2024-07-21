@@ -106,7 +106,6 @@ class PPO:
             env_idx = episode.env_idx
             indices = episode.indices
             ep_data = data[indices, env_idx]
-            print(indices)
 
             # calculate terminal obs value
             final_value = self.critic(episode.final_observation) * episode.trunc
