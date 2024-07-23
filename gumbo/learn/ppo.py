@@ -1,11 +1,11 @@
-from tqdm import tqdm
 from itertools import chain
 
+import numpy as np
 import torch as th
 import torch.nn.functional as F
 from torch.optim import Adam
 
-from data.samplers import batch_sample
+from gumbo.data.samplers import BatchSampler
 
 
 class PPO:
@@ -15,6 +15,7 @@ class PPO:
         policy, 
         critic, 
         collector, 
+        sampler=BatchSampler,
         optimizer=Adam,
         epochs=10,
         buff_size=2048, 
@@ -30,11 +31,13 @@ class PPO:
         self.policy = policy
         self.critic = critic
         self.collector = collector
+        self.sampler = sampler
 
         # data hyperparams
         self.epochs = epochs
         self.buff_size = buff_size
         self.batch_size = batch_size
+        self.n_batches = np.ceil(self.buff_size / self.batch_size).astype(int)
 
         # training hyperparams
         self.lr = lr
@@ -50,48 +53,52 @@ class PPO:
                             self.critic.parameters())
         self.optimizer = optimizer(self.params, lr=self.lr)
 
-        self.rews, self.lens = [], []
-
     def learn(self, steps):
-        for _ in tqdm(range(0, steps, self.buff_size)):
+        for _ in range(0, steps, self.buff_size):
             buffer = self.collector.collect(self.buff_size)
+
             data = self._augment_training_data(buffer).flatten()
 
-            for _ in range(self.epochs):
-                for batch in batch_sample(data, self.batch_size):
-                    # evaluate obs, actions
-                    values = self.critic(batch.obs).squeeze()
-                    dist = self.policy.dist(batch.obs)
-                    log_probs = dist.log_prob(batch.act)
-                    entropy = dist.entropy()
+            sampler = self.sampler(data)
 
-                    # policy loss
-                    ratios = th.exp(log_probs - batch.lgp)
-                    advantages = self._normalize_advantages(batch.adv)
-                    policy_loss = -th.min(
-                        advantages * ratios,
-                        advantages * th.clamp(ratios, 1 - self.eps, 1 + self.eps)
-                    ).mean()
-
-                    # value loss
-                    value_loss = F.mse_loss(batch.ret, values)
-
-                    # entropy loss
-                    entropy_loss = -entropy.mean()
-
-                    # total loss
-                    total_loss = policy_loss \
-                               + self.val_coef * value_loss \
-                               + self.ent_coef * entropy_loss
-                    
-                    # gradients
-                    self.optimizer.zero_grad()
-                    total_loss.backward()
-                    th.nn.utils.clip_grad_norm_(self.params, self.max_norm)
-
-                    self.optimizer.step()
+            for _ in range(self.epochs * self.n_batches):
+                batch = sampler.sample(self.batch_size)
+                self._update(batch)
 
             buffer.reset()
+
+    def _update(self, batch):
+        # evaluate obs, actions
+        values = self.critic(batch.obs).squeeze()
+        dist = self.policy.dist(batch.obs)
+        log_probs = dist.log_prob(batch.act)
+        entropy = dist.entropy()
+
+        # policy loss
+        ratios = th.exp(log_probs - batch.lgp)
+        advantages = self._normalize_advantages(batch.adv)
+        policy_loss = -th.min(
+            advantages * ratios,
+            advantages * th.clamp(ratios, 1 - self.eps, 1 + self.eps)
+        ).mean()
+
+        # value loss
+        value_loss = F.mse_loss(batch.ret, values)
+
+        # entropy loss
+        entropy_loss = -entropy.mean()
+
+        # total loss
+        total_loss = policy_loss \
+                   + self.val_coef * value_loss \
+                   + self.ent_coef * entropy_loss
+        
+        # gradients
+        self.optimizer.zero_grad()
+        total_loss.backward()
+        th.nn.utils.clip_grad_norm_(self.params, self.max_norm)
+
+        self.optimizer.step()
                     
     @th.no_grad()
     def _augment_training_data(self, buffer):
@@ -121,13 +128,7 @@ class PPO:
                 ep_data.rew, ep_data.val, final_value
             )
 
-            self.rews.append(ep_data.rew.sum().item())
-            self.lens.append(len(ep_data))
-
         data.ret = data.val + data.adv
-
-        print(f"Mean episode reward: {sum(self.rews[-100:]) / min(len(self.rews), 100)}", 
-              f"Mean episode length: {sum(self.lens[-100:]) / min(len(self.rews), 100)}")
 
         return data
     

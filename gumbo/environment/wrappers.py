@@ -3,8 +3,8 @@ import torch as th
 import gymnasium as gym
 from gymnasium.spaces import flatdim
 
-from utils import transpose_dict, try_from_numpy
-from environment.utils import logit_dim
+from gumbo.utils import transpose_dict, try_from_numpy
+from gumbo.environment.utils import logit_dim
 
 
 class TorchIO(gym.Wrapper):

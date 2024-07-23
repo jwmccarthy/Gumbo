@@ -1,16 +1,16 @@
 import torch as th
 import torch.nn as nn
 import gymnasium as gym
-from environment.wrappers import TorchIO
-from data.collector import Collector
-from data.buffers.episodic import EpisodicBuffer
-from policy.discrete import CategoricalPolicy
-from policy.continuous import DiagonalGaussianPolicy
-from learn.ppo import PPO
+from gumbo.environment.wrappers import TorchIO
+from gumbo.data.collector import Collector
+from gumbo.data.buffers import EpisodicBuffer
+from gumbo.policy.discrete import CategoricalPolicy
+from gumbo.policy.continuous import DiagonalGaussianPolicy
+from gumbo.learn.ppo import PPO
 
 
 if __name__ == "__main__":
-    env = gym.vector.SyncVectorEnv(1 * [lambda: gym.make("CartPole-v1")])
+    env = gym.vector.SyncVectorEnv(3 * [lambda: gym.make("LunarLander-v2")])
     env = TorchIO(env)
 
     policy = CategoricalPolicy(
@@ -35,10 +35,10 @@ if __name__ == "__main__":
                     nn.Tanh(),
                     nn.Linear(64, 1)
               ), collector)
-    data = ppo.learn(int(1e4))
+    data = ppo.learn(int(2e5))
 
     # Example expert trajectories
-env = gym.make("CartPole-v1", render_mode="human")
+env = gym.make("LunarLander-v2", render_mode="human")
 obs = th.as_tensor(env.reset()[0])
 for i in range(10000):
     action = policy(obs, sample=False)

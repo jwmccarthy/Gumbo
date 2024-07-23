@@ -1,7 +1,6 @@
-import numpy as np
 import torch as th
 
-from data.datasets import TensorDataset, Subset
+from gumbo.data.datasets import TensorDataset, Subset
 
 
 class EpisodicBuffer:
