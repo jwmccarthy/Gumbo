@@ -8,7 +8,7 @@ class DiagonalGaussianPolicy(nn.Module):
     def __init__(self, model):
         super().__init__()
         self.model = model
-        self.covmat = th.eye(model.out_features)
+        self.covmat = th.eye(model[-1].out_features)
 
     def forward(self, obs, sample=True):
         loc = self.model(obs)

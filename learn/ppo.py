@@ -1,3 +1,4 @@
+from tqdm import tqdm
 from itertools import chain
 
 import torch as th
@@ -18,13 +19,13 @@ class PPO:
         epochs=10,
         buff_size=2048, 
         batch_size=64,
+        lr=3e-4,
         eps=0.2,
         gamma=0.99,
         lmbda=0.95,
-        ent_coef=0.0,
+        ent_coef=0.01,
         val_coef=0.5,
-        max_norm=0.5,
-        opt_kwargs={}
+        max_norm=0.5
     ):
         self.policy = policy
         self.critic = critic
@@ -36,6 +37,7 @@ class PPO:
         self.batch_size = batch_size
 
         # training hyperparams
+        self.lr = lr
         self.eps = eps
         self.gamma = gamma
         self.lmbda = lmbda
@@ -46,10 +48,12 @@ class PPO:
         # initialize optimizer for combined params
         self.params = chain(self.policy.parameters(),
                             self.critic.parameters())
-        self.optimizer = optimizer(self.params, **opt_kwargs)
+        self.optimizer = optimizer(self.params, lr=self.lr)
+
+        self.rews, self.lens = [], []
 
     def learn(self, steps):
-        for _ in range(0, steps, self.buff_size):
+        for _ in tqdm(range(0, steps, self.buff_size)):
             buffer = self.collector.collect(self.buff_size)
             data = self._augment_training_data(buffer).flatten()
 
@@ -70,7 +74,7 @@ class PPO:
                     ).mean()
 
                     # value loss
-                    value_loss = F.mse_loss(values, batch.val)
+                    value_loss = F.mse_loss(batch.ret, values)
 
                     # entropy loss
                     entropy_loss = -entropy.mean()
@@ -86,6 +90,8 @@ class PPO:
                     th.nn.utils.clip_grad_norm_(self.params, self.max_norm)
 
                     self.optimizer.step()
+
+            buffer.reset()
                     
     @th.no_grad()
     def _augment_training_data(self, buffer):
@@ -96,7 +102,7 @@ class PPO:
         data.lgp = dist.log_prob(data.act)
         
         # calculate values
-        data.val = self.critic(data.obs).squeeze()
+        data.val = self.critic(data.obs).squeeze(2)
 
         # advantage storage
         data.adv = th.empty_like(data.val)
@@ -106,7 +112,6 @@ class PPO:
             env_idx = episode.env_idx
             indices = episode.indices
             ep_data = data[indices, env_idx]
-            print(indices)
 
             # calculate terminal obs value
             final_value = self.critic(episode.final_observation) * episode.trunc
@@ -115,6 +120,14 @@ class PPO:
             ep_data.adv[:] = self._calculate_episode_advantages(
                 ep_data.rew, ep_data.val, final_value
             )
+
+            self.rews.append(ep_data.rew.sum().item())
+            self.lens.append(len(ep_data))
+
+        data.ret = data.val + data.adv
+
+        print(f"Mean episode reward: {sum(self.rews[-100:]) / min(len(self.rews), 100)}", 
+              f"Mean episode length: {sum(self.lens[-100:]) / min(len(self.rews), 100)}")
 
         return data
     
@@ -127,7 +140,7 @@ class PPO:
         # conv kernel of discount factors
         kernel = (self.gamma * self.lmbda) ** th.arange(T, dtype=th.float32).view(1, 1, -1)
 
-        return F.conv1d(td_errors, kernel, padding=T - 1).squeeze()[-T:]
+        return F.conv1d(td_errors, kernel, padding=T - 1).view(-1)[-T:]
     
     def _normalize_advantages(self, advantages):
         return (advantages - advantages.mean()) / (advantages.std() + 1e-8)

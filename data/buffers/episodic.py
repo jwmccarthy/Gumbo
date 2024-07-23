@@ -13,21 +13,23 @@ class EpisodicBuffer:
         self.obs_dim = env.single_observation_space.shape
         self.act_dim = env.single_action_space.shape
 
-        self.episodes = []
         self.data = TensorDataset(
             obs=th.empty((self.size, self.env.num_envs, *self.obs_dim)),
             act=th.empty((self.size, self.env.num_envs, *self.act_dim)),
             rew=th.empty((self.size, self.env.num_envs))
         )
 
-        self.start = self.num_env * [0]
-        self.end = -1
+        self.reset()
 
     def add(self, obs, act, rew, term, trunc, info=None):
         self.data[self.end] = (obs, act, rew)
-        self.end = (self.end + 1) % self.size
+        self.end = (self.end + 1) % (self.size + 1)
         for i in range(self.num_env):
             if term[i] or trunc[i]: self._create_episode(i, trunc, info)
+
+    def reset(self):
+        self.end, self.start = 0, self.num_env * [0]
+        self.episodes = []
 
     def _create_episode(self, env_idx, trunc, info):
         indices = slice(self.start[env_idx], self.end)
@@ -37,5 +39,4 @@ class EpisodicBuffer:
         self.episodes.append(episode)
 
     def get_data(self):
-        print(self.end)
-        return self.data[:self.end+1]
+        return self.data[:self.end]
