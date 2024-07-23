@@ -3,7 +3,7 @@ import torch as th
 import gymnasium as gym
 from gymnasium.spaces import flatdim
 
-from utils import transpose_dict, safe_from_numpy
+from utils import transpose_dict, try_from_numpy
 from environment.utils import logit_dim
 
 
@@ -36,7 +36,7 @@ class TorchIO(gym.Wrapper):
 
         # TODO: custom env structure to handle episode data better
         infos = transpose_dict(infos) or [{} for _ in range(self.num_envs)]
-        infos = [{k: safe_from_numpy(v) for k, v in d.items()} for d in infos]
+        infos = [{k: try_from_numpy(v) for k, v in d.items()} for d in infos]
 
         return (
             th.from_numpy(obs),
