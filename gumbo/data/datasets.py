@@ -41,20 +41,14 @@ class TensorDataset(Dataset[Dict[str, Tensor]]):
     def cpu(self):
         for k, v in self.tensors.items(): self.tensors[k] = v.cpu()
 
-    def flatten(self):
-        return TensorDataset(**{
-            k: v.flatten(start_dim=0, end_dim=1) for k, v in self.tensors.items()
-        })
-    
-    @property
-    def shape(self):
-        return next(iter(self.tensors.values())).shape
+    def flatten(self, **dims):
+        return TensorDataset(**{k: v.flatten(**dims) for k, v in self.tensors.items()})
 
 
 class Subset(Dataset):
 
     dataset: Dataset
-    indices: Tensor
+    indices: slice
 
     def __init__(self, dataset: Dataset, indices: slice, **kwargs):
         self.dataset = dataset

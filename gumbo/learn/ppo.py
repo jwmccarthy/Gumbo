@@ -57,7 +57,7 @@ class PPO:
         for _ in range(0, steps, self.buff_size):
             buffer = self.collector.collect(self.buff_size)
 
-            data = self._augment_training_data(buffer).flatten()
+            data = self._augment_training_data(buffer)
 
             sampler = self.sampler(data)
 
@@ -73,6 +73,9 @@ class PPO:
         dist = self.policy.dist(batch.obs)
         log_probs = dist.log_prob(batch.act)
         entropy = dist.entropy()
+
+        # kl divergence
+        kl_div = th.mean(batch.lgp - log_probs)
 
         # policy loss
         ratios = th.exp(log_probs - batch.lgp)
@@ -130,7 +133,7 @@ class PPO:
 
         data.ret = data.val + data.adv
 
-        return data
+        return data.flatten(end_dim=1)
     
     def _calculate_episode_advantages(self, rewards, values, final_value):
         next_vals = th.cat([values[1:], final_value])
