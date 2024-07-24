@@ -3,6 +3,7 @@ import torch.nn.functional as F
 
 import timeit
 import numpy as np
+import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -36,7 +37,7 @@ def gae_estimate_loop(rewards, values, final_value):
     return advantages
 
 def test_gae_estimate():
-    ep_lens = [100, 1000, 10000, 100000]
+    ep_lens = np.arange(250, 5001, 250)
     device = "cpu"
 
     # initialize random test values
@@ -45,16 +46,20 @@ def test_gae_estimate():
     final_value = torch.rand(1).to(device)
 
     # compute GAE estimates
-    conv_times = [timeit.repeat(lambda: gae_estimate_conv(r, v, final_value), number=10) for r, v in zip(rewards, values)]
-    loop_times = [timeit.repeat(lambda: gae_estimate_loop(r, v, final_value), number=10) for r, v in zip(rewards, values)]
+    conv_times = np.array([timeit.repeat(lambda: gae_estimate_conv(r, v, final_value), number=10) for r, v in zip(rewards, values)])
+    loop_times = np.array([timeit.repeat(lambda: gae_estimate_loop(r, v, final_value), number=10) for r, v in zip(rewards, values)])
 
-    conv_time_mean = [np.mean(t) for t in conv_times]
-    loop_time_mean = [np.mean(t) for t in loop_times]
-    conv_time_std = [np.std(t) for t in conv_times]
-    loop_time_std = [np.std(t) for t in loop_times]
+    # store results in DataFrame
+    conv_times_flattened = conv_times.ravel()
+    loop_times_flattened = loop_times.ravel()
 
-    print(conv_time_mean, conv_time_std)
-    print(loop_time_mean, loop_time_std)
+    df = pd.DataFrame({
+        "Episode Length": np.tile(np.repeat(ep_lens, 5), 2),
+        "Time (s)": np.concatenate([conv_times_flattened, loop_times_flattened]),
+        "Method": ["conv"] * (len(ep_lens) * 5) + ["loop"] * (len(ep_lens) * 5)
+    })
+
+    sns.lineplot(data=df, x="Episode Length", y="Time (s)", hue="Method")
 
 if __name__ == "__main__":
     test_gae_estimate()
