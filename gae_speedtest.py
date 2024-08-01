@@ -106,13 +106,13 @@ def test_gae_estimate():
                 + ["fftconvolve (GPU)"] * (len(ep_lens) * int(n/2)) \
     })
 
-    plt.figure(figsize=(8, 6))
-    sns.set_theme()
+    plt.figure(figsize=(8, 6), dpi=150)
+    sns.set_theme(style="darkgrid")
     g = sns.lineplot(data=df, x="Episode Length", y="Time (s)", hue="Method")
     g.set_xscale("log")
     g.set_yscale("log")
     plt.tight_layout()
-    plt.show()
+    plt.savefig("./../jwmccarthy.github.io/assets/gae_runtime.png", facecolor=(1,1,1,0))
 
 if __name__ == "__main__":
     test_gae_estimate()

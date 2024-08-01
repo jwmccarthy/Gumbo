@@ -1,28 +1,25 @@
-import numpy as np
+from itertools import chain
 from collections import deque
+from numpy.random import permutation
 
-
-def batch_sample(data, batch_size):
-    random_inds = np.random.permutation(len(data))
-
-    for batch_start in range(0, len(data), batch_size):
-        batch_end = batch_start + batch_size
-        batch_inds = random_inds[batch_start:batch_end]
-        yield data[batch_inds]
+from gumbo.utils import array_split
 
 
 class BatchSampler:
 
-    def __init__(self, data):
+    def __init__(self, data, batch_size, epochs=1):
         self.data = data
+        self.epochs = epochs
+        self.batch_size = batch_size
         self.indices = self._random_indices()
 
-    def _random_indices(self):
-        return np.random.permutation(len(self.data))
+    def _permute(self):
+        return array_split(permutation(len(self.data)), self.batch_size)
 
-    def sample(self, batch_size):
+    def _random_indices(self):
+        return deque(chain(*[self._permute() for _ in range(self.epochs)]))
+
+    def sample(self):
         if len(self.indices) == 0:
-            self.indices = self._random_indices()
-        batch = self.data[self.indices[:batch_size]]
-        self.indices = self.indices[batch_size:]
-        return batch
+            return None
+        return self.data[self.indices.popleft()]

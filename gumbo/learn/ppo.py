@@ -15,10 +15,8 @@ class PPO:
         policy, 
         critic, 
         collector, 
-        sampler=BatchSampler,
         optimizer=Adam,
         epochs=10,
-        buff_size=2048, 
         batch_size=64,
         lr=3e-4,
         eps=0.2,
@@ -31,13 +29,10 @@ class PPO:
         self.policy = policy
         self.critic = critic
         self.collector = collector
-        self.sampler = sampler
 
         # data hyperparams
         self.epochs = epochs
-        self.buff_size = buff_size
         self.batch_size = batch_size
-        self.n_batches = np.ceil(self.buff_size / self.batch_size).astype(int)
 
         # training hyperparams
         self.lr = lr
@@ -54,18 +49,31 @@ class PPO:
         self.optimizer = optimizer(self.params, lr=self.lr)
 
     def learn(self, steps):
-        for _ in range(0, steps, self.buff_size):
-            buffer = self.collector.collect(self.buff_size)
+        ep_rew = []
+        ep_len = []
+
+        for _ in range(0, steps, self.collector.buffer.size):
+            buffer = self.collector.collect()
 
             data = self._augment_training_data(buffer)
 
-            sampler = self.sampler(data)
+            for episode in buffer.episodes:
+                indices = episode.indices
+                env_idx = episode.env_idx
+                ep_data = data[indices, env_idx]
+                ep_rew.append(ep_data.rew.sum().item())
+                ep_len.append(len(ep_data))
 
-            for _ in range(self.epochs * self.n_batches):
-                batch = sampler.sample(self.batch_size)
+            print(np.mean(ep_rew[-100:]))
+
+            sampler = BatchSampler(data, self.batch_size, self.epochs)
+
+            while batch := sampler.sample():
                 self._update(batch)
 
             buffer.reset()
+
+        return ep_rew, ep_len
 
     def _update(self, batch):
         # evaluate obs, actions
@@ -86,7 +94,7 @@ class PPO:
         ).mean()
 
         # value loss
-        value_loss = F.mse_loss(batch.ret, values)
+        value_loss = F.mse_loss(batch.ret.squeeze(), values)
 
         # entropy loss
         entropy_loss = -entropy.mean()
@@ -133,7 +141,7 @@ class PPO:
 
         data.ret = data.val + data.adv
 
-        return data.flatten(end_dim=1)
+        return data
     
     def _calculate_episode_advantages(self, rewards, values, final_value):
         next_vals = th.cat([values[1:], final_value])

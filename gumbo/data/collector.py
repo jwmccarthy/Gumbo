@@ -9,8 +9,10 @@ class Collector:
         self.buffer = buffer
 
     @th.no_grad()
-    def collect(self, steps, sample=True):
+    def collect(self, steps=None, sample=True):
         last_obs, infos = self.env.reset()
+
+        steps = steps or self.buffer.size
 
         for t in range(steps):
             actions = self.agent(last_obs, sample=sample)
